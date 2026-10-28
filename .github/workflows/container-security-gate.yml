@@ -1,0 +1,55 @@
+name: "Container Security Pipeline & CVE Gate"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-scan:
+    name: "Build Hardened Image & Trivy Gate"
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Hardened Container Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: enterprise-auth-service:${{ github.sha }}
+
+      - name: Run Trivy Vulnerability Scanner (SARIF Report)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: enterprise-auth-service:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+
+      - name: Upload Trivy Scan Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Enforce Trivy Pipeline Gate (Break on Critical/High Application CVEs)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: enterprise-auth-service:${{ github.sha }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'

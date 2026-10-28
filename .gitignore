@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Secrets & Environment Variables
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Security Scanner Output & Reports
+*.sarif
+*.json.report
+trivy-results*
+
+# OS & Editor Metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
